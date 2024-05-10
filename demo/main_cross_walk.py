@@ -19,20 +19,17 @@ classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "trai
 red = (0,0,255) #bgr
 green = (0,255,0)
 
-model = YOLO('yolo-Weights/yolov8x.pt')
+model = YOLO('yolo-Weights/yolov8n.pt')
 
-source = "videos/view1-1.mp4"
+source = "videos/view2.mp4"
 cap = cv2.VideoCapture(source)
 
-SAVE = False
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4 코덱
+out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (int(cap.get(3)), int(cap.get(4))))
 
-if SAVE:
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4 코덱
-    out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (int(cap.get(3)), int(cap.get(4))))
+crosswalk = ROI((920, 450),(870, 580),(1280, 580),(1280, 450))
 
-road = ROI((920, 450),(870, 580),(1280, 580),(1280, 450))
-
-traffic_actuated_region = ROI((200, 420),(100, 470),(920, 450),(820, 400))
+crosswalk2 = ROI((200, 420),(100, 470),(920, 450),(820, 400))
 
 
 
@@ -40,13 +37,12 @@ while True:
     success, img = cap.read()
     if not success:
         break
-    cmask = img.copy
 
     results = model(img, stream=True,classes = [0,5],device = "mps",conf = 0.5) 
 
 
-    draw_polygon(img, road, (0, 0, 50), 0.5)
-    draw_polygon(img, traffic_actuated_region, (50, 50, 0), 0.5)
+    draw_polygon(img, crosswalk, (0, 0, 50), 0.5)
+    draw_polygon(img, crosswalk2, (50, 50, 0), 0.5)
 
     for r in results: #한 번
         boxes = r.boxes
@@ -62,8 +58,11 @@ while True:
             confidence = math.ceil((box.conf[0]*100))/100
             
             if class_name == "person":
-                if is_inside_polygon((x2,y2),road) or is_inside_polygon((x3,y3),road):
-                    #도로에서 사람이 있는 경우
+                if is_inside_polygon((x2,y2),crosswalk) or is_inside_polygon((x3,y3),crosswalk):
+                    #crosswalk 1에서 건너는 경우 
+                    cv2.rectangle(img=img, pt1=(x1, y1), pt2=(x3, y3), color= red, thickness=3)
+                elif is_inside_polygon((x2,y2),crosswalk2) or is_inside_polygon((x3,y3),crosswalk2):
+                    #crosswalk 2에서 건너는 경우
                     cv2.rectangle(img=img, pt1=(x1, y1), pt2=(x3, y3), color= red, thickness=3)
                 else: #안전
                     cv2.rectangle(img=img, pt1=(x1, y1), pt2=(x3, y3), color= green, thickness=3)
@@ -73,14 +72,12 @@ while True:
                 
             cv2.putText(img,class_name , [x1, y1], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
-    if SAVE:
-        out.write(img)
+    out.write(img)
     cv2.imshow('obj detection demo', img)
     if cv2.waitKey(1) == ord('q'):
         break
 
 cap.release()
-if SAVE:
-    out.release()   
+out.release()
 
 cv2.destroyAllWindows()
