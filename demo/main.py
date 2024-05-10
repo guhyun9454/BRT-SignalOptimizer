@@ -1,10 +1,9 @@
 from ultralytics import YOLO
 import cv2
 import math 
-
-model = YOLO('yolo-Weights/yolov8m.pt')
-
-source = "videos/view2.mp4"
+import numpy as np
+from functions import draw_polygon
+from ROI import ROI
 
 classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
               "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
@@ -18,13 +17,23 @@ classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "trai
               "teddy bear", "hair drier", "toothbrush"
               ]
 
-# results = model(source,show = True,conf = 0.5,device = "mps",classes = [0,5]) 
+model = YOLO('yolo-Weights/yolov8m.pt')
 
+source = "videos/view2.mp4"
 cap = cv2.VideoCapture(source)
+
+crosswalk = ROI((920, 450),(870, 580),(1280, 580),(1280, 450))
 
 while True:
     success, img = cap.read()
-    results = model(img, stream=True,classes = [0,5],device = "mps",conf = 0.5) #person, bottle, cup, tvmonitor, laptop, mouse, keyboard, cell phone, book 만 탐지
+    cmask = img.copy
+
+    results = model(img, stream=True,classes = [0,5],device = "mps",conf = 0.5) 
+
+    draw_polygon(img, crosswalk, (0, 0, 50), 0.5)
+
+    # cv2.polylines(img, [polygon], isClosed=True, color=(255, 255, 0), thickness=5)
+
 
     # coordinates
     for r in results:
