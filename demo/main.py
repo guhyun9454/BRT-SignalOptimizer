@@ -7,5 +7,5 @@ model = YOLO('yolov8n.pt')
 source = "videos/view1.mp4"
 
 # Run inference on the source
-results = model(source)  # generator of Results objects
+results = model(source,show = True,conf = 0.5,device = "mps")  # generator of Results objects
 
