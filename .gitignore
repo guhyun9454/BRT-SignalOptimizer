@@ -1,3 +1,6 @@
 
 .DS_Store
 *.pyc
+yolo-Weights/yolov8x.pt
+yolo-Weights/yolov8l.pt
+demo/tempCodeRunnerFile.py

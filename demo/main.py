@@ -19,7 +19,7 @@ classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "trai
 red = (0,0,255) #bgr
 green = (0,255,0)
 
-model = YOLO('yolo-Weights/yolov8m.pt')
+model = YOLO('yolo-Weights/yolov8x.pt')
 
 source = "videos/view2.mp4"
 cap = cv2.VideoCapture(source)
@@ -35,7 +35,8 @@ crosswalk2 = ROI((200, 420),(100, 470),(920, 450),(820, 400))
 
 while True:
     success, img = cap.read()
-    cmask = img.copy
+    if not success:
+        break
 
     results = model(img, stream=True,classes = [0,5],device = "mps",conf = 0.5) 
 
@@ -71,7 +72,7 @@ while True:
                 
             cv2.putText(img,class_name , [x1, y1], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
-    # out.write(img)
+    out.write(img)
     cv2.imshow('obj detection demo', img)
     if cv2.waitKey(1) == ord('q'):
         break
