@@ -2,7 +2,7 @@ from ultralytics import YOLO
 import cv2
 import math 
 import numpy as np
-from functions import draw_polygon
+from functions import draw_polygon, is_inside_polygon
 from ROI import ROI
 
 classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
@@ -16,13 +16,22 @@ classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "trai
               "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
               "teddy bear", "hair drier", "toothbrush"
               ]
+red = (0,0,255) #bgr
+green = (0,255,0)
 
 model = YOLO('yolo-Weights/yolov8m.pt')
 
 source = "videos/view2.mp4"
 cap = cv2.VideoCapture(source)
 
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4 코덱
+out = cv2.VideoWriter('output.mp4', fourcc, 20.0, (int(cap.get(3)), int(cap.get(4))))
+
 crosswalk = ROI((920, 450),(870, 580),(1280, 580),(1280, 450))
+
+crosswalk2 = ROI((200, 420),(100, 470),(920, 450),(820, 400))
+
+
 
 while True:
     success, img = cap.read()
@@ -30,43 +39,44 @@ while True:
 
     results = model(img, stream=True,classes = [0,5],device = "mps",conf = 0.5) 
 
+
     draw_polygon(img, crosswalk, (0, 0, 50), 0.5)
+    draw_polygon(img, crosswalk2, (50, 50, 0), 0.5)
 
-    # cv2.polylines(img, [polygon], isClosed=True, color=(255, 255, 0), thickness=5)
-
-
-    # coordinates
-    for r in results:
+    for r in results: #한 번
         boxes = r.boxes
 
         for box in boxes:
-            # bounding box
-            x1, y1, x2, y2 = box.xyxy[0]
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
+            #info abt box
+            x1, y1, x3, y3 = box.xyxy[0] #x1,y1 : top left, x3,y3 :bottom right
+            x1, y1, x3, y3 = int(x1), int(y1), int(x3), int(y3) # convert to int values
+            x2,y2 = x1, y3
 
-            # put box in cam
-            cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
-
-            # confidence
-            confidence = math.ceil((box.conf[0]*100))/100
-            # print("Confidence --->",confidence)
-
-            # class name
             cls = int(box.cls[0])
-            # print("Class name -->", classNames[cls])
+            class_name = classNames[cls]
+            confidence = math.ceil((box.conf[0]*100))/100
+            
+            if class_name == "person":
+                if is_inside_polygon((x2,y2),crosswalk) or is_inside_polygon((x3,y3),crosswalk):
+                    #crosswalk 1에서 건너는 경우 
+                    cv2.rectangle(img=img, pt1=(x1, y1), pt2=(x3, y3), color= red, thickness=3)
+                elif is_inside_polygon((x2,y2),crosswalk2) or is_inside_polygon((x3,y3),crosswalk2):
+                    #crosswalk 2에서 건너는 경우
+                    cv2.rectangle(img=img, pt1=(x1, y1), pt2=(x3, y3), color= red, thickness=3)
+                else: #안전
+                    cv2.rectangle(img=img, pt1=(x1, y1), pt2=(x3, y3), color= green, thickness=3)
 
-            # object details
-            org = [x1, y1]
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            fontScale = 1
-            color = (255, 0, 0)
-            thickness = 2
+            elif class_name == "bus":
+                cv2.rectangle(img=img, pt1=(x1, y1), pt2=(x3, y3), color=(255, 255, 255), thickness=3)
+                
+            cv2.putText(img,class_name , [x1, y1], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
-            cv2.putText(img, classNames[cls], org, font, fontScale, color, thickness)
-
+    # out.write(img)
     cv2.imshow('obj detection demo', img)
     if cv2.waitKey(1) == ord('q'):
         break
 
 cap.release()
+out.release()
+
 cv2.destroyAllWindows()
